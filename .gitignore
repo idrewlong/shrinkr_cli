@@ -1,0 +1,25 @@
+# Binary
+shrinkr
+
+# Output
+compressed/
+
+# Images
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.tiff
+*.tif
+*.webp
+*.avif
+*.heif
+*.heic
+images/
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/

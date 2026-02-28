@@ -19,12 +19,12 @@ var logoLines = []string{
 
 // Gradient colors for each line of the logo
 var logoColors = []lipgloss.Color{
-	ColorLogo1, // red
+	// ColorLogo1, // red
 	ColorLogo2, // orange
-	ColorLogo3, // yellow
-	ColorLogo4, // green
-	ColorLogo5, // cyan
-	ColorLogo6, // purple
+	// ColorLogo3, // yellow
+	// ColorLogo4, // green
+	// ColorLogo5, // cyan
+	// ColorLogo6, // purple
 }
 
 // PrintLogo prints the Shrinkr ASCII art logo with gradient coloring.
@@ -40,7 +40,7 @@ func PrintLogo() {
 	tagline := lipgloss.NewStyle().
 		Foreground(ColorGray).
 		Italic(true).
-		Render("          Image Compression Tool by Andrew Long")
+		Render("          Image Compression Tool by @idrewlong")
 
 	fmt.Println(tagline)
 	fmt.Println(strings.Repeat("─", 58))

@@ -14,6 +14,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// ShrinkConfig holds all parameters needed to run a compression job.
+// Both the flag-based CLI and the interactive wizard populate this struct.
+type ShrinkConfig struct {
+	InputFolder string
+	Output      string
+	Format      string
+	Size        int
+	Quality     int
+	MinQuality  int
+	MaxQuality  int
+	Workers     int
+	Recursive   bool
+}
+
 var (
 	output     string
 	size       int
@@ -26,15 +40,17 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "shrinkr <input-folder>",
+	Use:   "shrinkr [input-folder]",
 	Short: "Shrinkr — Fast image compression & format conversion",
 	Long: `Shrinkr is a blazing-fast CLI tool for compressing images and converting
 them to modern formats. It uses concurrent processing to handle batches
 of images quickly, with smart quality optimization to hit target file sizes.
 
+Run with no arguments to launch the interactive wizard.
+
 Supported input formats: JPG, PNG, TIFF, WebP, GIF, AVIF, HEIF/HEIC
 Supported output formats: WebP, AVIF, JPEG, PNG`,
-	Args: cobra.ExactArgs(1),
+	Args: cobra.RangeArgs(0, 1),
 	RunE: run,
 }
 
@@ -57,48 +73,65 @@ func Execute() {
 }
 
 func run(cmd *cobra.Command, args []string) error {
-	inputFolder := args[0]
+	if len(args) == 0 {
+		return runWizard()
+	}
 
-	// Print the ASCII logo
 	ui.PrintLogo()
 
+	config := ShrinkConfig{
+		InputFolder: args[0],
+		Output:      output,
+		Format:      format,
+		Size:        size,
+		Quality:     quality,
+		MinQuality:  minQuality,
+		MaxQuality:  maxQuality,
+		Workers:     workers,
+		Recursive:   recursive,
+	}
+
+	return execute(config)
+}
+
+func execute(cfg ShrinkConfig) error {
 	// Validate input folder
-	info, err := os.Stat(inputFolder)
+	info, err := os.Stat(cfg.InputFolder)
 	if err != nil {
-		return fmt.Errorf("cannot access folder %s: %v", inputFolder, err)
+		return fmt.Errorf("cannot access folder %s: %v", cfg.InputFolder, err)
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("%s is not a directory", inputFolder)
+		return fmt.Errorf("%s is not a directory", cfg.InputFolder)
 	}
 
 	// Parse and validate output format
-	outputFormat, err := compressor.ParseFormat(format)
+	outputFormat, err := compressor.ParseFormat(cfg.Format)
 	if err != nil {
 		return err
 	}
 
 	// Validate options
-	if size <= 0 {
+	if cfg.Size <= 0 {
 		return fmt.Errorf("target size must be a positive number")
 	}
-	if quality < 1 || quality > 100 {
+	if cfg.Quality < 1 || cfg.Quality > 100 {
 		return fmt.Errorf("quality must be between 1 and 100")
 	}
-	if minQuality < 1 || minQuality > 100 {
+	if cfg.MinQuality < 1 || cfg.MinQuality > 100 {
 		return fmt.Errorf("min-quality must be between 1 and 100")
 	}
-	if maxQuality < 1 || maxQuality > 100 {
+	if cfg.MaxQuality < 1 || cfg.MaxQuality > 100 {
 		return fmt.Errorf("max-quality must be between 1 and 100")
 	}
-	if minQuality > maxQuality {
+	if cfg.MinQuality > cfg.MaxQuality {
 		return fmt.Errorf("min-quality cannot be greater than max-quality")
 	}
-	if workers < 1 {
+	if cfg.Workers < 1 {
 		return fmt.Errorf("workers must be at least 1")
 	}
 
 	// Find all image files
-	files, err := scanner.FindImages(inputFolder, recursive)
+	files, err := scanner.FindImages(cfg.InputFolder, cfg.Recursive)
 	if err != nil {
 		return fmt.Errorf("error scanning folder: %v", err)
 	}
@@ -115,16 +148,16 @@ func run(cmd *cobra.Command, args []string) error {
 		ui.TitleStyle.Render(fmt.Sprintf("%d image(s)", len(files))))
 	fmt.Printf("  %s %d KB  %s  %s %s  %s  %s %d\n\n",
 		ui.LabelStyle.Render("Target:"),
-		size,
+		cfg.Size,
 		ui.DimStyle.Render("|"),
 		ui.LabelStyle.Render("Format:"),
 		ui.AccentStyle.Render(string(outputFormat)),
 		ui.DimStyle.Render("|"),
 		ui.LabelStyle.Render("Workers:"),
-		workers)
+		cfg.Workers)
 
 	// Create output folder
-	if err := os.MkdirAll(output, 0755); err != nil {
+	if err := os.MkdirAll(cfg.Output, 0755); err != nil {
 		return fmt.Errorf("cannot create output folder: %v", err)
 	}
 
@@ -132,28 +165,27 @@ func run(cmd *cobra.Command, args []string) error {
 	startTime := time.Now()
 
 	// Create and start worker pool
-	pool := worker.NewPool(workers, len(files))
+	pool := worker.NewPool(cfg.Workers, len(files))
 	pool.Start()
 
 	// Submit all jobs in a goroutine
 	go func() {
 		for _, file := range files {
-			// Build output path maintaining folder structure
-			relPath, _ := filepath.Rel(inputFolder, file)
+			relPath, _ := filepath.Rel(cfg.InputFolder, file)
 			dir := filepath.Dir(relPath)
 			baseName := filepath.Base(relPath)
 			ext := filepath.Ext(baseName)
 			nameNoExt := baseName[:len(baseName)-len(ext)]
-			outputPath := filepath.Join(output, dir, nameNoExt+outputFormat.FileExtension())
+			outputPath := filepath.Join(cfg.Output, dir, nameNoExt+outputFormat.FileExtension())
 
 			pool.Submit(compressor.Job{
 				InputPath:      file,
 				OutputPath:     outputPath,
-				TargetSizeKB:   size,
+				TargetSizeKB:   cfg.Size,
 				Format:         outputFormat,
-				MinQuality:     minQuality,
-				MaxQuality:     maxQuality,
-				InitialQuality: quality,
+				MinQuality:     cfg.MinQuality,
+				MaxQuality:     cfg.MaxQuality,
+				InitialQuality: cfg.Quality,
 			})
 		}
 		pool.Done()
@@ -168,15 +200,15 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 	progressBar.Finish()
 
-	// Print all file results after progress completes (clean output)
+	// Print all file results after progress completes
 	for _, result := range results {
-		ui.PrintFileResult(result, size)
+		ui.PrintFileResult(result, cfg.Size)
 	}
 	fmt.Println()
 
 	// Print summary
 	elapsed := time.Since(startTime)
-	ui.PrintSummary(results, elapsed, size)
+	ui.PrintSummary(results, elapsed, cfg.Size)
 
 	return nil
 }

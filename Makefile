@@ -1,7 +1,7 @@
 APP_NAME := shrinkr
 VERSION := 1.0.0
 
-.PHONY: build install clean run release-local tag-release
+.PHONY: build install clean run test bench release-local tag-release
 
 # Build the binary
 build:
@@ -19,6 +19,14 @@ clean:
 # Run with sample images
 run:
 	go run . ../images
+
+# Run all tests
+test:
+	go test ./... -v -timeout 120s
+
+# Run format benchmarks (shows per-format encoding speed)
+bench:
+	go test ./internal/compressor/ -bench=. -benchtime=3x -timeout 120s
 
 # Test GoReleaser config locally (no publish)
 release-local:

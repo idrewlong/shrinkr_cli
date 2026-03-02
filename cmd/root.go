@@ -193,6 +193,7 @@ func execute(cfg ShrinkConfig) error {
 
 	// Collect all results with a live progress bar
 	progressBar := ui.NewProgressBar(len(files))
+	progressBar.Start()
 	var results []compressor.Result
 	for result := range pool.Results() {
 		results = append(results, result)

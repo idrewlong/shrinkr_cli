@@ -23,3 +23,6 @@ images/
 # IDE
 .idea/
 .vscode/
+
+# Scope docs
+LANDING_PAGE_SCOPE.md

@@ -39,6 +39,7 @@ brews:
       owner: idrewlong
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
     name: shrinkr
     homepage: "https://github.com/idrewlong/shrinkr_cli"
     description: "Fast image compression & format conversion CLI tool"

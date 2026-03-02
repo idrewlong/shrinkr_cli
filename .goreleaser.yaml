@@ -1,0 +1,53 @@
+version: 2
+
+project_name: shrinkr
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: shrinkr-darwin
+    binary: shrinkr
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=1
+    ldflags:
+      - -s -w -X main.Version={{.Version}}
+
+archives:
+  - id: shrinkr-archive
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+
+brews:
+  - repository:
+      owner: idrewlong
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    name: shrinkr
+    homepage: "https://github.com/idrewlong/shrinkr_cli"
+    description: "Fast image compression & format conversion CLI tool"
+    license: "MIT"
+    dependencies:
+      - name: vips
+    install: |
+      bin.install "shrinkr"
+    test: |
+      system "#{bin}/shrinkr", "--help"
+    commit_msg_template: "Update shrinkr to {{ .Tag }}"

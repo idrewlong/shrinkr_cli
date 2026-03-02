@@ -240,7 +240,7 @@ func runStepFormat(state *wizardState) stepResult {
 					huh.NewOption("WebP  (recommended for web)", "webp"),
 					huh.NewOption("PNG   (lossless)", "png"),
 					huh.NewOption("JPEG  (universal compatibility)", "jpeg"),
-					huh.NewOption("AVIF  (smaller, slower encode)", "avif"),
+					huh.NewOption("AVIF  (smallest files, slow — not for large batches)", "avif"),
 				).
 				Value(&state.formatChoice),
 		),
@@ -342,6 +342,8 @@ func runStepCustom(state *wizardState) stepResult {
 // ── Step 5: Output folder ───────────────────────────────────────────────────
 
 func runStepOutput(state *wizardState) stepResult {
+	defaultOutput := filepath.Join(state.inputFolder, "compressed")
+
 	for {
 		var choice string
 		form := huh.NewForm(
@@ -350,7 +352,7 @@ func runStepOutput(state *wizardState) stepResult {
 					Title("Output folder").
 					Description("Where should compressed images be saved?  Press Esc or Ctrl+C to go back.").
 					Options(
-						huh.NewOption("compressed/  (default, created in current folder)", "compressed"),
+						huh.NewOption(fmt.Sprintf("compressed/  (created inside %s)", state.inputFolder), defaultOutput),
 						huh.NewOption("Browse for a custom output location...", browsePlaceholder),
 					).
 					Value(&choice),

@@ -22,6 +22,13 @@ func NewProgressBar(total int) *ProgressBar {
 	}
 }
 
+// Start renders the initial empty progress bar before any results arrive.
+func (p *ProgressBar) Start() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.render()
+}
+
 // Increment advances the progress bar by one and re-renders.
 func (p *ProgressBar) Increment() {
 	p.mu.Lock()

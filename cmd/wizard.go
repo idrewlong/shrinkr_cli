@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/huh"
 	"github.com/idrewlong/shrinkr_cli/internal/scanner"
 	"github.com/idrewlong/shrinkr_cli/internal/ui"
@@ -47,6 +48,14 @@ var presets = map[string]preset{
 }
 
 const browsePlaceholder = "__browse__"
+
+// wizardKeyMap returns a huh KeyMap with both ctrl+c and esc bound to quit,
+// so pressing either key goes back one step (or exits at the first step).
+func wizardKeyMap() *huh.KeyMap {
+	km := huh.NewDefaultKeyMap()
+	km.Quit = key.NewBinding(key.WithKeys("ctrl+c", "esc"))
+	return km
+}
 
 // stepResult controls the state machine flow.
 type stepResult int
@@ -127,14 +136,47 @@ func runStepFolder(state *wizardState) stepResult {
 
 	for {
 		if len(detected) == 0 {
-			// No nearby folders — go straight to Finder
-			folder, cancelled := pickFolder("Select your image folder")
-			if cancelled {
+			// No nearby folders — show browse vs manual entry options
+			var choice string
+			form := huh.NewForm(
+				huh.NewGroup(
+					huh.NewSelect[string]().
+						Title("Select image folder").
+						Description("No image folders detected nearby.  Press Esc or Ctrl+C to cancel.").
+						Options(
+							huh.NewOption("Browse for folder...", "browse"),
+							huh.NewOption("Enter folder path manually...", "manual"),
+						).
+						Value(&choice),
+				),
+			).WithTheme(huh.ThemeCharm()).WithKeyMap(wizardKeyMap())
+
+			err := form.Run()
+			if err == huh.ErrUserAborted {
 				return stepBack
 			}
-			if folder != "" {
-				state.inputFolder = folder
-				return stepNext
+			if err != nil {
+				return stepAbort
+			}
+
+			if choice == "browse" {
+				folder, cancelled := pickFolderFinder("Select your image folder")
+				if cancelled {
+					continue
+				}
+				if folder != "" {
+					state.inputFolder = folder
+					return stepNext
+				}
+			} else {
+				folder, cancelled := pickFolderManual()
+				if cancelled {
+					continue
+				}
+				if folder != "" {
+					state.inputFolder = folder
+					return stepNext
+				}
 			}
 			continue
 		}
@@ -154,11 +196,11 @@ func runStepFolder(state *wizardState) stepResult {
 			huh.NewGroup(
 				huh.NewSelect[string]().
 					Title("Select image folder").
-					Description("Detected nearby.  Press Esc to cancel.").
+					Description("Detected nearby.  Press Esc or Ctrl+C to cancel.").
 					Options(options...).
 					Value(&choice),
 			),
-		).WithTheme(huh.ThemeCharm())
+		).WithTheme(huh.ThemeCharm()).WithKeyMap(wizardKeyMap())
 
 		err := form.Run()
 		if err == huh.ErrUserAborted {
@@ -193,7 +235,7 @@ func runStepFormat(state *wizardState) stepResult {
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title("Output format").
-				Description("WebP is recommended for most use cases.  Press Esc to go back.").
+				Description("WebP is recommended for most use cases.  Press Esc or Ctrl+C to go back.").
 				Options(
 					huh.NewOption("WebP  (recommended)", "webp"),
 					huh.NewOption("AVIF  (smaller, slower encode)", "avif"),
@@ -202,7 +244,7 @@ func runStepFormat(state *wizardState) stepResult {
 				).
 				Value(&state.formatChoice),
 		),
-	).WithTheme(huh.ThemeCharm())
+	).WithTheme(huh.ThemeCharm()).WithKeyMap(wizardKeyMap())
 
 	err := form.Run()
 	if err == huh.ErrUserAborted {
@@ -221,7 +263,7 @@ func runStepPreset(state *wizardState) stepResult {
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title("Compression settings").
-				Description("Choose a preset or configure manually.  Press Esc to go back.").
+				Description("Choose a preset or configure manually.  Press Esc or Ctrl+C to go back.").
 				Options(
 					huh.NewOption("Recommended — 500 KB, quality 85, balanced", "recommended"),
 					huh.NewOption("Web Optimized — 200 KB, quality 75, aggressive", "web"),
@@ -230,7 +272,7 @@ func runStepPreset(state *wizardState) stepResult {
 				).
 				Value(&state.presetChoice),
 		),
-	).WithTheme(huh.ThemeCharm())
+	).WithTheme(huh.ThemeCharm()).WithKeyMap(wizardKeyMap())
 
 	err := form.Run()
 	if err == huh.ErrUserAborted {
@@ -280,12 +322,12 @@ func runStepCustom(state *wizardState) stepResult {
 
 			huh.NewInput().
 				Title("Worker count").
-				Description(fmt.Sprintf("Your machine has %d CPU cores.  Press Esc to go back.", runtime.NumCPU())).
+				Description(fmt.Sprintf("Your machine has %d CPU cores.  Press Esc or Ctrl+C to go back.", runtime.NumCPU())).
 				Placeholder(strconv.Itoa(runtime.NumCPU())).
 				Value(&state.customWorkersStr).
 				Validate(validatePositiveInt),
 		),
-	).WithTheme(huh.ThemeCharm())
+	).WithTheme(huh.ThemeCharm()).WithKeyMap(wizardKeyMap())
 
 	err := form.Run()
 	if err == huh.ErrUserAborted {
@@ -306,14 +348,14 @@ func runStepOutput(state *wizardState) stepResult {
 			huh.NewGroup(
 				huh.NewSelect[string]().
 					Title("Output folder").
-					Description("Where should compressed images be saved?  Press Esc to go back.").
+					Description("Where should compressed images be saved?  Press Esc or Ctrl+C to go back.").
 					Options(
 						huh.NewOption("compressed/  (default, created in current folder)", "compressed"),
 						huh.NewOption("Browse for a custom output location...", browsePlaceholder),
 					).
 					Value(&choice),
 			),
-		).WithTheme(huh.ThemeCharm())
+		).WithTheme(huh.ThemeCharm()).WithKeyMap(wizardKeyMap())
 
 		err := form.Run()
 		if err == huh.ErrUserAborted {
@@ -350,7 +392,7 @@ func runStepOutput(state *wizardState) stepResult {
 						return nil
 					}),
 			),
-		).WithTheme(huh.ThemeCharm())
+		).WithTheme(huh.ThemeCharm()).WithKeyMap(wizardKeyMap())
 
 		if err := nameForm.Run(); err == huh.ErrUserAborted {
 			continue // back to output selection
@@ -377,7 +419,7 @@ func runStepConfirm(state *wizardState) stepResult {
 				Negative("Cancel").
 				Value(&confirmed),
 		),
-	).WithTheme(huh.ThemeCharm())
+	).WithTheme(huh.ThemeCharm()).WithKeyMap(wizardKeyMap())
 
 	err := form.Run()
 	if err == huh.ErrUserAborted {
@@ -394,25 +436,30 @@ func runStepConfirm(state *wizardState) stepResult {
 
 // ── Folder picker ───────────────────────────────────────────────────────────
 
-// pickFolder opens a native Finder dialog on macOS.
-// Returns (folder, cancelled). If cancelled=true, the user closed without selecting.
-// Falls back to a text input prompt if Finder is unavailable.
+// pickFolder opens a native Finder dialog on macOS, falling back to text input.
+// Returns (folder, cancelled).
 func pickFolder(prompt string) (string, bool) {
 	if runtime.GOOS == "darwin" {
 		if _, err := exec.LookPath("osascript"); err == nil {
-			folder, err := macFolderDialog(prompt)
-			if err != nil {
-				// User cancelled Finder or dialog error — report as cancelled
-				return "", true
-			}
-			return folder, false
+			return pickFolderFinder(prompt)
 		}
 	}
+	return pickFolderManual()
+}
 
-	// Fallback: text input
-	// Note: shell autocomplete (zsh/oh-my-zsh) is unavailable here because
-	// the terminal is in raw mode. Use Finder (above) for easy browsing,
-	// or paste a full path with Cmd+V.
+// pickFolderFinder opens a native macOS Finder folder selection dialog.
+// Returns (folder, cancelled).
+func pickFolderFinder(prompt string) (string, bool) {
+	folder, err := macFolderDialog(prompt)
+	if err != nil {
+		return "", true
+	}
+	return folder, false
+}
+
+// pickFolderManual shows a text input for typing a folder path.
+// Returns (folder, cancelled).
+func pickFolderManual() (string, bool) {
 	var folder string
 	form := huh.NewForm(
 		huh.NewGroup(
@@ -435,7 +482,7 @@ func pickFolder(prompt string) (string, bool) {
 					return nil
 				}),
 		),
-	).WithTheme(huh.ThemeCharm())
+	).WithTheme(huh.ThemeCharm()).WithKeyMap(wizardKeyMap())
 
 	if err := form.Run(); err != nil {
 		return "", true

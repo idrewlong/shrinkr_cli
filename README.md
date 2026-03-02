@@ -46,7 +46,7 @@ The wizard will:
 4. Ask where to save the output
 5. Show a summary and confirm before running
 
-> **Tip:** Press `Esc` at any step to go back. Press `Ctrl+C` to quit.
+> **Tip:** Press `Esc` or `Ctrl+C` at any step to go back one step. Pressing either key repeatedly from the first step exits the program.
 
 ### Direct CLI mode
 

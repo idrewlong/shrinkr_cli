@@ -12,7 +12,6 @@ builds:
     goos:
       - darwin
     goarch:
-      - amd64
       - arm64
     env:
       - CGO_ENABLED=1
@@ -21,7 +20,7 @@ builds:
 
 archives:
   - id: shrinkr-archive
-    format: tar.gz
+    formats: [tar.gz]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:

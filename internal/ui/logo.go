@@ -39,14 +39,14 @@ func PrintLogo() {
 	}
 
 	// Brief pause before tagline
-	time.Sleep(80 * time.Millisecond)
+	// time.Sleep(80 * time.Millisecond)
 
-	tagline := lipgloss.NewStyle().
-		Foreground(ColorGray).
-		Italic(true).
-		Render("          Image Compression Tool")
+	// tagline := lipgloss.NewStyle().
+	// 	Foreground(ColorGray).
+	// 	Italic(true).
+	// 	Render("          Image Compression Tool")
 
-	fmt.Println(tagline)
+	// fmt.Println(tagline)
 
 	// Animate the separator line drawing across
 	sep := "─"

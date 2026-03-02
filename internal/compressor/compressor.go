@@ -47,6 +47,16 @@ func Compress(job Job) Result {
 		job.MaxIterations = 10 // match Node.js default
 	}
 
+	// Guard against loading enormous files into memory
+	const maxFileSizeBytes = 500 * 1024 * 1024 // 500 MB
+	info, err := os.Stat(job.InputPath)
+	if err != nil {
+		return errorResult(job, fmt.Sprintf("failed to stat file: %v", err))
+	}
+	if info.Size() > maxFileSizeBytes {
+		return errorResult(job, fmt.Sprintf("file too large (%d MB), skipping — 500 MB limit", info.Size()/1024/1024))
+	}
+
 	// Read input file
 	inputBytes, err := os.ReadFile(job.InputPath)
 	if err != nil {

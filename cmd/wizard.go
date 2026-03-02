@@ -235,12 +235,12 @@ func runStepFormat(state *wizardState) stepResult {
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title("Output format").
-				Description("WebP is recommended for most use cases.  Press Esc or Ctrl+C to go back.").
+				Description("WebP is recommended for web.  Press Esc or Ctrl+C to go back.").
 				Options(
-					huh.NewOption("WebP  (recommended)", "webp"),
-					huh.NewOption("AVIF  (smaller, slower encode)", "avif"),
-					huh.NewOption("JPEG  (universal compatibility)", "jpeg"),
+					huh.NewOption("WebP  (recommended for web)", "webp"),
 					huh.NewOption("PNG   (lossless)", "png"),
+					huh.NewOption("JPEG  (universal compatibility)", "jpeg"),
+					huh.NewOption("AVIF  (smaller, slower encode)", "avif"),
 				).
 				Value(&state.formatChoice),
 		),

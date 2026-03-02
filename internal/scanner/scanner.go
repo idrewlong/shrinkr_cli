@@ -37,7 +37,7 @@ func FindImages(inputFolder string, recursive bool) ([]string, error) {
 			if err != nil {
 				return err
 			}
-			if !d.IsDir() && IsSupportedImage(path) {
+			if d.Type().IsRegular() && IsSupportedImage(path) {
 				files = append(files, path)
 			}
 			return nil
@@ -51,7 +51,7 @@ func FindImages(inputFolder string, recursive bool) ([]string, error) {
 			return nil, err
 		}
 		for _, entry := range entries {
-			if !entry.IsDir() {
+			if entry.Type().IsRegular() {
 				fullPath := filepath.Join(inputFolder, entry.Name())
 				if IsSupportedImage(fullPath) {
 					files = append(files, fullPath)
